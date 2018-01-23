@@ -3,7 +3,6 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
-	"math"
 	"net/http"
 	"regexp"
 	"runtime/debug"
@@ -173,7 +172,6 @@ func (ctx *blipSyncContext) LogTo(key string, format string, args ...interface{}
 	base.LogTo(key, formatWithContextID, paramsWithContextID...)
 }
 
-
 //////// CHECKPOINTS
 
 // Received a "getCheckpoint" request
@@ -223,39 +221,30 @@ func (bh *blipHandler) handleSetCheckpoint(rq *blip.Message) error {
 // Received a "subChanges" subscription request
 func (bh *blipHandler) handleSubscribeToChanges(rq *blip.Message) error {
 
-	// Depeding on the db sequence type, use correct zero sequence for since value
-	since := bh.db.CreateZeroSinceValue()
+	subChanges := newSubChanges(rq, bh.blipSyncContext)
+	defer bh.blipSyncContext.LogTo("SyncMsg", "%q %s", rq.Profile(), subChanges.String())
 
-	if sinceStr, found := rq.Properties["since"]; found {
+	since := subChanges.since(bh.db.CreateZeroSinceValue)
+
+	bh.batchSize = subChanges.batchSize()
+	bh.continuous = subChanges.continuous()
+	bh.activeOnly = subChanges.activeOnly()
+
+	if filter := subChanges.filter(); filter == base.FilterByChannel {
 		var err error
-		if since, err = db.ParseSequenceIDFromJSON([]byte(sinceStr)); err != nil {
-			bh.blipSyncContext.LogTo("Sync", "%s: Invalid sequence ID in 'since': %s ... %s", rq, sinceStr, bh.effectiveUsername)
-			since = db.SequenceID{}
-		}
-	}
-	bh.batchSize = int(getRestrictedIntFromString(rq.Properties["batch"], 200, 10, math.MaxUint64, true))
-	bh.continuous = false
-	if val, found := rq.Properties["continuous"]; found && val != "false" {
-		bh.continuous = true
-	}
-	bh.activeOnly = (rq.Properties["active_only"] == "true")
-	if filter := rq.Properties["filter"]; filter == "sync_gateway/bychannel" {
-		if channelsParam, found := rq.Properties["channels"]; !found {
-			return base.HTTPErrorf(http.StatusBadRequest, "Missing 'channels' filter parameter")
-		} else {
-			channelsArray := strings.Split(channelsParam, ",")
-			var err error
-			bh.channels, err = channels.SetFromArray(channelsArray, channels.ExpandStar)
-			if err != nil {
-				return err
-			} else if len(bh.channels) == 0 {
-				return base.HTTPErrorf(http.StatusBadRequest, "Empty channel list")
-			}
+		bh.channels, err = subChanges.channelsExpandedSet()
+		if err != nil {
+			return base.HTTPErrorf(http.StatusBadRequest, "%s", err)
+		} else if len(bh.channels) == 0 {
+			return base.HTTPErrorf(http.StatusBadRequest, "Empty channel list")
 		}
 	} else if filter != "" {
 		return base.HTTPErrorf(http.StatusBadRequest, "Unknown filter; try sync_gateway/bychannel")
 	}
+
 	go bh.sendChanges(rq.Sender, since) // TODO: does this ever end?
+
+
 	return nil
 }
 
@@ -689,11 +678,11 @@ func DefaultBlipLogger(contextID string) blip.LogFn {
 
 		switch eventType {
 		case blip.LogMessage:
-			base.LogTo("Sync+", formatWithContextID, paramsWithContextID...)
+			base.LogTo("BLIP+", formatWithContextID, paramsWithContextID...)
 		case blip.LogFrame:
-			base.LogTo("Sync++", formatWithContextID, paramsWithContextID...)
+			base.LogTo("BLIP++", formatWithContextID, paramsWithContextID...)
 		default:
-			base.LogTo("Sync", formatWithContextID, paramsWithContextID...)
+			base.LogTo("BLIP", formatWithContextID, paramsWithContextID...)
 		}
 	}
 }
