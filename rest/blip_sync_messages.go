@@ -2,12 +2,13 @@ package rest
 
 import (
 	"fmt"
-	"github.com/couchbase/go-blip"
-	"github.com/couchbase/sync_gateway/base"
-	"github.com/couchbase/sync_gateway/db"
 	"math"
 	"strings"
+
+	"github.com/couchbase/go-blip"
+	"github.com/couchbase/sync_gateway/base"
 	"github.com/couchbase/sync_gateway/channels"
+	"github.com/couchbase/sync_gateway/db"
 )
 
 const (
@@ -19,33 +20,39 @@ const (
 	BlipPropertyChannels   = "channels"
 )
 
+// Function signature for something that generates a sequence id
+type SequenceIDGenerator func() db.SequenceID
+
+// Helper for handling BLIP subChanges requests.  Supports Stringer() interface to log aspects of the request.
 type subChanges struct {
-	rq              *blip.Message
-	logger          base.SGLogger
-	sinceSequenceId db.SequenceID
+	rq                    *blip.Message       // The underlying BLIP message for this subChanges request
+	logger                base.SGLogger       // A logger object which might encompass more state (eg, blipContext id)
+	sinceZeroValueCreator SequenceIDGenerator // A sequence generator for creating zero'd since values
 }
 
-func newSubChanges(rq *blip.Message, logger base.SGLogger) *subChanges {
+// Create a new subChanges helper
+func newSubChanges(rq *blip.Message, logger base.SGLogger, sinceZeroValueCreator SequenceIDGenerator) *subChanges {
 	return &subChanges{
-		rq:     rq,
-		logger: logger,
+		rq:                    rq,
+		logger:                logger,
+		sinceZeroValueCreator: sinceZeroValueCreator,
 	}
 }
 
-func (s *subChanges) since(zeroValueCreator func() db.SequenceID) db.SequenceID {
+func (s *subChanges) since() db.SequenceID {
 
 	// Depending on the db sequence type, use correct zero sequence for since value
-	s.sinceSequenceId = zeroValueCreator()
+	sinceSequenceId := s.sinceZeroValueCreator()
 
 	if sinceStr, found := s.rq.Properties[BlipPropertySince]; found {
 		var err error
-		if s.sinceSequenceId, err = db.ParseSequenceIDFromJSON([]byte(sinceStr)); err != nil {
+		if sinceSequenceId, err = db.ParseSequenceIDFromJSON([]byte(sinceStr)); err != nil {
 			s.logger.LogTo("Sync", "%s: Invalid sequence ID in 'since': %s", s.rq, sinceStr)
-			s.sinceSequenceId = db.SequenceID{}
+			sinceSequenceId = db.SequenceID{}
 		}
 	}
 
-	return s.sinceSequenceId
+	return sinceSequenceId
 
 }
 
@@ -89,7 +96,7 @@ func (s *subChanges) String() string {
 
 	return fmt.Sprintf(
 		"Since: %v Continuous: %v ActiveOnly: %v.  Filter: %v.  Channels: %v",
-		s.sinceSequenceId,
+		s.since(),
 		s.continuous(),
 		s.activeOnly(),
 		s.filter(),

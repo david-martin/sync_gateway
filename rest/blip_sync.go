@@ -221,10 +221,10 @@ func (bh *blipHandler) handleSetCheckpoint(rq *blip.Message) error {
 // Received a "subChanges" subscription request
 func (bh *blipHandler) handleSubscribeToChanges(rq *blip.Message) error {
 
-	subChanges := newSubChanges(rq, bh.blipSyncContext)
-	defer bh.blipSyncContext.LogTo("SyncMsg", "%q %s", rq.Profile(), subChanges.String())
+	subChanges := newSubChanges(rq, bh.blipSyncContext, bh.db.CreateZeroSinceValue)
+	bh.logEndpointEntry(rq.Profile(), subChanges)
 
-	since := subChanges.since(bh.db.CreateZeroSinceValue)
+	since := subChanges.since()
 
 	bh.batchSize = subChanges.batchSize()
 	bh.continuous = subChanges.continuous()
@@ -670,6 +670,11 @@ func isCompressible(filename string, meta map[string]interface{}) bool {
 				!kBadTypes.MatchString(mimeType))
 	}
 	return true // be optimistic by default
+}
+
+
+func (bh *blipHandler) logEndpointEntry(profile string, endpoint fmt.Stringer) {
+	bh.blipSyncContext.LogTo("SyncMsg", "%q %s", profile, endpoint)
 }
 
 func DefaultBlipLogger(contextID string) blip.LogFn {
