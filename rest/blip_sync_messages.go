@@ -10,7 +10,6 @@ import (
 	"github.com/couchbase/sync_gateway/base"
 	"github.com/couchbase/sync_gateway/channels"
 	"github.com/couchbase/sync_gateway/db"
-	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 // Function signature for something that generates a sequence id

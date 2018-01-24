@@ -456,7 +456,7 @@ func (bh *blipHandler) handleProposedChanges(rq *blip.Message) error {
 	if err := rq.ReadJSONBody(&changeList); err != nil {
 		return err
 	}
-	bh.blipSyncContext.LogTo("Sync", "Received %d changes from client", len(changeList))
+	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Num Proposed Changes: %d", len(changeList))))
 	if len(changeList) == 0 {
 		return nil
 	}
