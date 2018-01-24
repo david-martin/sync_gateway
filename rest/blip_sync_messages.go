@@ -10,6 +10,7 @@ import (
 	"github.com/couchbase/sync_gateway/base"
 	"github.com/couchbase/sync_gateway/channels"
 	"github.com/couchbase/sync_gateway/db"
+	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 // Function signature for something that generates a sequence id
@@ -199,6 +200,32 @@ func (a *addRevision) String() string {
 	if sequence, foundSequence := a.sequence(); foundSequence == true {
 		buffer.WriteString(fmt.Sprintf("Sequence: %v ", sequence))
 	}
+
+	return buffer.String()
+
+}
+
+type getAttachment struct {
+	rq *blip.Message // The underlying BLIP message
+}
+
+func newGetAttachment(rq *blip.Message) *getAttachment {
+	return &getAttachment{
+		rq: rq,
+	}
+}
+
+
+func (g *getAttachment) digest() string {
+	return g.rq.Properties[BlipPropertyDigest]
+}
+
+
+func (g *getAttachment) String() string {
+
+	buffer := bytes.NewBufferString("")
+
+	buffer.WriteString(fmt.Sprintf("Digest: %v ", g.digest()))
 
 	return buffer.String()
 

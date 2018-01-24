@@ -35,6 +35,7 @@ const (
 	BlipPropertyId         = "id"
 	BlipPropertyDeleted    = "deleted"
 	BlipPropertySequence   = "sequence"
+	BlipPropertyDigest   = "digest"
 
 	// Blip profiles
 	BlipProfileSubChanges     = "subChanges"
@@ -588,7 +589,11 @@ func (bh *blipHandler) handleAddRevision(rq *blip.Message) error {
 
 // Received a "getAttachment" request
 func (bh *blipHandler) handleGetAttachment(rq *blip.Message) error {
-	digest := rq.Properties["digest"]
+
+	getAttachment := newGetAttachment(rq)
+	bh.logEndpointEntry(rq.Profile(), getAttachment)
+
+	digest := getAttachment.digest()
 	if digest == "" {
 		return base.HTTPErrorf(http.StatusBadRequest, "Missing 'digest'")
 	}
