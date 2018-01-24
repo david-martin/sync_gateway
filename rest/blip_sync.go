@@ -31,8 +31,10 @@ const (
 	BlipPropertyFilter     = "filter"
 	BlipPropertyChannels   = "channels"
 	BlipPropertyClient     = "client"
-	BlipPropertyRev     = "rev"
-
+	BlipPropertyRev        = "rev"
+	BlipPropertyId         = "id"
+	BlipPropertyDeleted    = "deleted"
+	BlipPropertySequence   = "sequence"
 
 	// Blip profiles
 	BlipProfileSubChanges     = "subChanges"
@@ -411,12 +413,12 @@ func (bh *blipHandler) handlePushedChanges(rq *blip.Message) error {
 	if !bh.db.AllowConflicts() {
 		return base.HTTPErrorf(http.StatusConflict, "Use 'proposeChanges' instead")
 	}
-
 	var changeList [][]interface{}
 	if err := rq.ReadJSONBody(&changeList); err != nil {
 		return err
 	}
-	bh.blipSyncContext.LogTo("Sync", "Received %d changes from client ... %s", len(changeList), bh.effectiveUsername)
+
+	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Num Pushed Changes: %d", len(changeList))))
 	if len(changeList) == 0 {
 		return nil
 	}
@@ -543,18 +545,21 @@ func (bh *blipHandler) sendRevision(sender *blip.Sender, seq db.SequenceID, docI
 // Received a "rev" request, i.e. client is pushing a revision body
 func (bh *blipHandler) handleAddRevision(rq *blip.Message) error {
 
+	addRevision := newAddRevision(rq)
+	bh.logEndpointEntry(rq.Profile(), addRevision)
+
 	var body db.Body
 	if err := rq.ReadJSONBody(&body); err != nil {
 		return err
 	}
 
 	// Doc metadata comes from the BLIP message metadata, not magic document properties:
-	docID, found := rq.Properties["id"]
-	revID, rfound := rq.Properties["rev"]
+	docID, found := addRevision.id()
+	revID, rfound := addRevision.rev()
 	if !found || !rfound {
 		return base.HTTPErrorf(http.StatusBadRequest, "Missing docID or revID")
 	}
-	if del, found := rq.Properties["deleted"]; found && del != "0" && del != "false" {
+	if del, found := addRevision.deleted(); found && del != "0" && del != "false" {
 		body["_deleted"] = true // (PutExistingRev expects deleted flag in the body)
 	}
 
@@ -562,7 +567,6 @@ func (bh *blipHandler) handleAddRevision(rq *blip.Message) error {
 	if historyStr := rq.Properties["history"]; historyStr != "" {
 		history = append(history, strings.Split(historyStr, ",")...)
 	}
-	bh.blipSyncContext.LogTo("Sync+", "Inserting rev %q %s history=%q, array = %#v ... %s", docID, revID, rq.Properties["history"], history, bh.effectiveUsername)
 
 	// Look at attachments with revpos > the last common ancestor's
 	minRevpos := 1
@@ -706,7 +710,7 @@ func isCompressible(filename string, meta map[string]interface{}) bool {
 }
 
 func (bh *blipHandler) logEndpointEntry(profile string, endpoint fmt.Stringer) {
-	bh.blipSyncContext.LogTo("SyncMsg", "%q %s", profile, endpoint)
+	bh.blipSyncContext.LogTo("SyncMsg", "%q %s %s", profile, endpoint, bh.effectiveUsername)
 }
 
 type AdhocStringer struct {

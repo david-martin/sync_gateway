@@ -12,13 +12,12 @@ import (
 	"github.com/couchbase/sync_gateway/db"
 )
 
-
 // Function signature for something that generates a sequence id
 type SequenceIDGenerator func() db.SequenceID
 
 // Helper for handling BLIP subChanges requests.  Supports Stringer() interface to log aspects of the request.
 type subChanges struct {
-	rq                    *blip.Message       // The underlying BLIP message for this subChanges request
+	rq                    *blip.Message       // The underlying BLIP message
 	logger                base.SGLogger       // A logger object which might encompass more state (eg, blipContext id)
 	sinceZeroValueCreator SequenceIDGenerator // A sequence generator for creating zero'd since values
 }
@@ -118,14 +117,13 @@ func (s *subChanges) String() string {
 
 }
 
-
 type setCheckpoint struct {
-	rq                    *blip.Message       // The underlying BLIP message for this subChanges request
+	rq *blip.Message // The underlying BLIP message
 }
 
 func newSetCheckpoint(rq *blip.Message) *setCheckpoint {
 	return &setCheckpoint{
-		rq:                    rq,
+		rq: rq,
 	}
 }
 
@@ -141,12 +139,65 @@ func (s *setCheckpoint) String() string {
 
 	buffer := bytes.NewBufferString("")
 
-
 	buffer.WriteString(fmt.Sprintf("Client: %v ", s.client()))
 
 	rev := s.rev()
 	if len(rev) > 0 {
 		buffer.WriteString(fmt.Sprintf("Rev: %v ", rev))
+	}
+
+	return buffer.String()
+
+}
+
+type addRevision struct {
+	rq *blip.Message // The underlying BLIP message
+}
+
+func newAddRevision(rq *blip.Message) *addRevision {
+	return &addRevision{
+		rq: rq,
+	}
+}
+
+func (a *addRevision) id() (id string, found bool) {
+	id, found = a.rq.Properties[BlipPropertyId]
+	return id, found
+}
+
+func (a *addRevision) rev() (rev string, found bool) {
+	rev, found = a.rq.Properties[BlipPropertyRev]
+	return rev, found
+}
+
+func (a *addRevision) deleted() (deleted string, found bool) {
+	deleted, found = a.rq.Properties[BlipPropertyDeleted]
+	return deleted, found
+}
+
+func (a *addRevision) sequence() (sequence string, found bool) {
+	sequence, found = a.rq.Properties[BlipPropertySequence]
+	return sequence, found
+}
+
+func (a *addRevision) String() string {
+
+	buffer := bytes.NewBufferString("")
+
+	if id, foundId := a.id(); foundId {
+		buffer.WriteString(fmt.Sprintf("Id: %v ", id))
+	}
+
+	if rev, foundRev := a.rev(); foundRev {
+		buffer.WriteString(fmt.Sprintf("Rev: %v ", rev))
+	}
+
+	if deleted, foundDeleted := a.deleted(); foundDeleted {
+		buffer.WriteString(fmt.Sprintf("Deleted: %v ", deleted))
+	}
+
+	if sequence, foundSequence := a.sequence(); foundSequence == true {
+		buffer.WriteString(fmt.Sprintf("Sequence: %v ", sequence))
 	}
 
 	return buffer.String()

@@ -11,8 +11,8 @@ import (
 
 	"github.com/couchbase/go-blip"
 	"github.com/couchbase/sync_gateway/base"
-	"github.com/couchbaselabs/go.assert"
 	"github.com/couchbase/sync_gateway/db"
+	"github.com/couchbaselabs/go.assert"
 )
 
 // This test performs the following steps against the Sync Gateway passive blip replicator:
@@ -36,7 +36,7 @@ func TestBlipPushRevisionInspectChanges(t *testing.T) {
 	// Verify Sync Gateway will accept the doc revision that is about to be sent
 	var changeList [][]interface{}
 	changesRequest := blip.NewRequest()
-	changesRequest.SetProfile(BlipProfileChanges)                             // TODO: make a constant for "changes" and use it everywhere
+	changesRequest.SetProfile(BlipProfileChanges)                    // TODO: make a constant for "changes" and use it everywhere
 	changesRequest.SetBody([]byte(`[["1", "foo", "1-abc", false]]`)) // [sequence, docID, revID]
 	sent := bt.sender.Send(changesRequest)
 	assert.True(t, sent)
@@ -501,7 +501,6 @@ func TestAccessGrantViaAdminApi(t *testing.T) {
 
 }
 
-
 func TestCheckpoint(t *testing.T) {
 
 	// Create blip tester
@@ -563,6 +562,5 @@ func TestCheckpoint(t *testing.T) {
 	log.Printf("body: %s", body)
 	assert.True(t, strings.Contains(string(body), "Key"))
 	assert.True(t, strings.Contains(string(body), "Value"))
-
 
 }
