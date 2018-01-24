@@ -5,11 +5,11 @@ import (
 	"math"
 	"strings"
 
+	"bytes"
 	"github.com/couchbase/go-blip"
 	"github.com/couchbase/sync_gateway/base"
 	"github.com/couchbase/sync_gateway/channels"
 	"github.com/couchbase/sync_gateway/db"
-	"bytes"
 )
 
 const (
@@ -23,9 +23,13 @@ const (
 	BlipPropertyChannels   = "channels"
 
 	// Blip profiles
-	BlipProfileSubChanges = "subChanges"
-	BlipProfileChanges = "changes"
+	BlipProfileSubChanges     = "subChanges"
+	BlipProfileChanges        = "changes"
 	BlipProfileProposeChanges = "proposeChanges"
+	BlipProfileGetCheckpoint  = "getCheckpoint"
+	BlipProfileSetCheckpoint  = "setCheckpoint"
+	BlipProfileRev            = "rev"
+	BlipProfileGetAttachment  = "getAttachment"
 
 	// Blip default vals
 	BlipDefaultBatchSize = uint64(200)

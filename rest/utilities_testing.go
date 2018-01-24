@@ -665,7 +665,7 @@ func (bt *BlipTester) SendRev(docId, docRev string, body []byte) (sent bool, req
 
 	revRequest := blip.NewRequest()
 	revRequest.SetCompressed(true)
-	revRequest.SetProfile("rev")
+	revRequest.SetProfile(BlipProfileRev)
 	revRequest.Properties["id"] = docId
 	revRequest.Properties["rev"] = docRev
 	revRequest.Properties["deleted"] = "false"

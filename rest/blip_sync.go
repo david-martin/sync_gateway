@@ -64,12 +64,12 @@ func userBlipHandler(underlyingMethod blipHandlerMethod) blipHandlerMethod {
 
 // Maps the profile (verb) of an incoming request to the method that handles it.
 var kHandlersByProfile = map[string]blipHandlerMethod{
-	"getCheckpoint": (*blipHandler).handleGetCheckpoint,
-	"setCheckpoint": (*blipHandler).handleSetCheckpoint,
-	"subChanges":    userBlipHandler((*blipHandler).handleSubscribeToChanges),
-	"changes":       userBlipHandler((*blipHandler).handlePushedChanges),
-	"rev":           userBlipHandler((*blipHandler).handleAddRevision),
-	"getAttachment": userBlipHandler((*blipHandler).handleGetAttachment),
+	BlipProfileGetCheckpoint: (*blipHandler).handleGetCheckpoint,
+	BlipProfileSetCheckpoint: (*blipHandler).handleSetCheckpoint,
+	BlipProfileSubChanges:    userBlipHandler((*blipHandler).handleSubscribeToChanges),
+	BlipProfileChanges:       userBlipHandler((*blipHandler).handlePushedChanges),
+	BlipProfileRev:           userBlipHandler((*blipHandler).handleAddRevision),
+	BlipProfileGetAttachment: userBlipHandler((*blipHandler).handleGetAttachment),
 }
 
 // HTTP handler for incoming BLIP sync WebSocket request (/db/_blipsync)
@@ -96,7 +96,7 @@ func (h *handler) handleBLIPSync() error {
 		ctx.register(profile, handlerFn)
 	}
 	if !h.db.AllowConflicts() {
-		ctx.register("proposeChanges", (*blipHandler).handleProposedChanges)
+		ctx.register(BlipProfileProposeChanges, (*blipHandler).handleProposedChanges)
 	}
 
 	ctx.blipContext.FatalErrorHandler = func(err error) {
@@ -176,7 +176,11 @@ func (ctx *blipSyncContext) LogTo(key string, format string, args ...interface{}
 
 // Received a "getCheckpoint" request
 func (bh *blipHandler) handleGetCheckpoint(rq *blip.Message) error {
-	docID := "checkpoint/" + rq.Properties["client"]
+
+	client := rq.Properties["client"]
+	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Client: %s", client)))
+
+	docID := fmt.Sprintf("checkpoint/%s", client)
 	response := rq.Response()
 	if response == nil {
 		return nil
@@ -199,7 +203,13 @@ func (bh *blipHandler) handleGetCheckpoint(rq *blip.Message) error {
 
 // Received a "setCheckpoint" request
 func (bh *blipHandler) handleSetCheckpoint(rq *blip.Message) error {
-	docID := "checkpoint/" + rq.Properties["client"]
+
+	client := rq.Properties["client"]
+
+	// TODO: need to create a setCheckpoint struct which knows how to dump the client and the rev
+	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Client: %s", client)))
+
+	docID := fmt.Sprintf("checkpoint/%s", client)
 
 	var checkpoint db.Body
 	if err := rq.ReadJSONBody(&checkpoint); err != nil {
@@ -243,7 +253,6 @@ func (bh *blipHandler) handleSubscribeToChanges(rq *blip.Message) error {
 	}
 
 	go bh.sendChanges(rq.Sender, since) // TODO: does this ever end?
-
 
 	return nil
 }
@@ -672,9 +681,20 @@ func isCompressible(filename string, meta map[string]interface{}) bool {
 	return true // be optimistic by default
 }
 
-
 func (bh *blipHandler) logEndpointEntry(profile string, endpoint fmt.Stringer) {
 	bh.blipSyncContext.LogTo("SyncMsg", "%q %s", profile, endpoint)
+}
+
+type AdhocStringer struct {
+	s string
+}
+
+func NewAdhocStringer(s string) *AdhocStringer {
+	return &AdhocStringer{s: s}
+}
+
+func (a AdhocStringer) String() string {
+	return a.s
 }
 
 func DefaultBlipLogger(contextID string) blip.LogFn {
@@ -683,11 +703,11 @@ func DefaultBlipLogger(contextID string) blip.LogFn {
 
 		switch eventType {
 		case blip.LogMessage:
-			base.LogTo("BLIP+", formatWithContextID, paramsWithContextID...)
+			base.LogTo("WS+", formatWithContextID, paramsWithContextID...)
 		case blip.LogFrame:
-			base.LogTo("BLIP++", formatWithContextID, paramsWithContextID...)
+			base.LogTo("WS++", formatWithContextID, paramsWithContextID...)
 		default:
-			base.LogTo("BLIP", formatWithContextID, paramsWithContextID...)
+			base.LogTo("WS", formatWithContextID, paramsWithContextID...)
 		}
 	}
 }
