@@ -724,7 +724,7 @@ func (bt *BlipTester) GetChanges() (changes [][]interface{}) {
 func (bt *BlipTester) SubscribeToChanges(continuous bool, changes chan<- *blip.Message) {
 
 	// When this test sends subChanges, Sync Gateway will send a changes request that must be handled
-	bt.blipContext.HandlerForProfile["changes"] = func(request *blip.Message) {
+	bt.blipContext.HandlerForProfile[BlipProfileChanges] = func(request *blip.Message) {
 
 		changes <- request
 
@@ -743,12 +743,12 @@ func (bt *BlipTester) SubscribeToChanges(continuous bool, changes chan<- *blip.M
 
 	// Send subChanges to subscribe to changes, which will cause the "changes" profile handler above to be called back
 	subChangesRequest := blip.NewRequest()
-	subChangesRequest.SetProfile("subChanges")
+	subChangesRequest.SetProfile(BlipProfileSubChanges)
 	switch continuous {
 	case true:
-		subChangesRequest.Properties["continuous"] = "true"
+		subChangesRequest.Properties[BlipPropertyContinuous] = "true"
 	default:
-		subChangesRequest.Properties["continuous"] = "false"
+		subChangesRequest.Properties[BlipPropertyContinuous] = "false"
 	}
 
 	sent := bt.sender.Send(subChangesRequest)

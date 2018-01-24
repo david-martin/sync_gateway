@@ -35,7 +35,7 @@ func TestBlipPushRevisionInspectChanges(t *testing.T) {
 	// Verify Sync Gateway will accept the doc revision that is about to be sent
 	var changeList [][]interface{}
 	changesRequest := blip.NewRequest()
-	changesRequest.SetProfile("changes")                             // TODO: make a constant for "changes" and use it everywhere
+	changesRequest.SetProfile(BlipProfileChanges)                             // TODO: make a constant for "changes" and use it everywhere
 	changesRequest.SetBody([]byte(`[["1", "foo", "1-abc", false]]`)) // [sequence, docID, revID]
 	sent := bt.sender.Send(changesRequest)
 	assert.True(t, sent)
@@ -61,7 +61,7 @@ func TestBlipPushRevisionInspectChanges(t *testing.T) {
 	// Call changes with a hypothetical new revision, assert that it returns last pushed revision
 	var changeList2 [][]interface{}
 	changesRequest2 := blip.NewRequest()
-	changesRequest2.SetProfile("changes")
+	changesRequest2.SetProfile(BlipProfileChanges)
 	changesRequest2.SetBody([]byte(`[["2", "foo", "2-xyz", false]]`)) // [sequence, docID, revID]
 	sent2 := bt.sender.Send(changesRequest2)
 	assert.True(t, sent2)
@@ -80,7 +80,7 @@ func TestBlipPushRevisionInspectChanges(t *testing.T) {
 	receviedChangesRequestWg := sync.WaitGroup{}
 
 	// When this test sends subChanges, Sync Gateway will send a changes request that must be handled
-	bt.blipContext.HandlerForProfile["changes"] = func(request *blip.Message) {
+	bt.blipContext.HandlerForProfile[BlipProfileChanges] = func(request *blip.Message) {
 
 		log.Printf("got changes message: %+v", request)
 		body, err := request.Body()
@@ -116,8 +116,8 @@ func TestBlipPushRevisionInspectChanges(t *testing.T) {
 
 	// Send subChanges to subscribe to changes, which will cause the "changes" profile handler above to be called back
 	subChangesRequest := blip.NewRequest()
-	subChangesRequest.SetProfile("subChanges")
-	subChangesRequest.Properties["continuous"] = "false"
+	subChangesRequest.SetProfile(BlipProfileSubChanges)
+	subChangesRequest.Properties[BlipPropertyContinuous] = "false"
 	sent = bt.sender.Send(subChangesRequest)
 	assert.True(t, sent)
 	receviedChangesRequestWg.Add(1)
@@ -148,7 +148,7 @@ func TestContinousChangesSubscription(t *testing.T) {
 	// When this test sends subChanges, Sync Gateway will send a changes request that must be handled
 	lastReceivedSeq := float64(0)
 	var numbatchesReceived int32
-	bt.blipContext.HandlerForProfile["changes"] = func(request *blip.Message) {
+	bt.blipContext.HandlerForProfile[BlipProfileChanges] = func(request *blip.Message) {
 
 		log.Printf("got changes message: %+v", request)
 
@@ -207,9 +207,9 @@ func TestContinousChangesSubscription(t *testing.T) {
 
 	// Send subChanges to subscribe to changes, which will cause the "changes" profile handler above to be called back
 	subChangesRequest := blip.NewRequest()
-	subChangesRequest.SetProfile("subChanges")
-	subChangesRequest.Properties["continuous"] = "true"
-	subChangesRequest.Properties["batch"] = "10" // default batch size is 200, lower this to 10 to make sure we get multiple batches
+	subChangesRequest.SetProfile(BlipProfileSubChanges)
+	subChangesRequest.Properties[BlipPropertyContinuous] = "true"
+	subChangesRequest.Properties[BlipPropertyBatch] = "10" // default batch size is 200, lower this to 10 to make sure we get multiple batches
 	subChangesRequest.SetCompressed(false)
 	sent := bt.sender.Send(subChangesRequest)
 	assert.True(t, sent)
@@ -254,7 +254,7 @@ func TestProposedChangesNoConflictsMode(t *testing.T) {
 	defer bt.Close()
 
 	proposeChangesRequest := blip.NewRequest()
-	proposeChangesRequest.SetProfile("proposeChanges")
+	proposeChangesRequest.SetProfile(BlipProfileProposeChanges)
 	proposeChangesRequest.SetCompressed(true)
 
 	// According to proposeChanges spec:
