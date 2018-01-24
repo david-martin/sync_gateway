@@ -9,15 +9,26 @@ import (
 	"github.com/couchbase/sync_gateway/base"
 	"github.com/couchbase/sync_gateway/channels"
 	"github.com/couchbase/sync_gateway/db"
+	"bytes"
 )
 
 const (
+
+	// Blip properties
 	BlipPropertySince      = "since"
 	BlipPropertyBatch      = "batch"
 	BlipPropertyContinuous = "continuous"
 	BlipPropertyActiveOnly = "active_only"
 	BlipPropertyFilter     = "filter"
 	BlipPropertyChannels   = "channels"
+
+	// Blip profiles
+	BlipProfileSubChanges = "subChanges"
+	BlipProfileChanges = "changes"
+	BlipProfileProposeChanges = "proposeChanges"
+
+	// Blip default vals
+	BlipDefaultBatchSize = uint64(200)
 )
 
 // Function signature for something that generates a sequence id
@@ -57,7 +68,7 @@ func (s *subChanges) since() db.SequenceID {
 }
 
 func (s *subChanges) batchSize() int {
-	return int(getRestrictedIntFromString(s.rq.Properties[BlipPropertyBatch], 200, 10, math.MaxUint64, true))
+	return int(getRestrictedIntFromString(s.rq.Properties[BlipPropertyBatch], BlipDefaultBatchSize, 10, math.MaxUint64, true))
 }
 
 func (s *subChanges) continuous() bool {
@@ -90,16 +101,37 @@ func (s *subChanges) channelsExpandedSet() (resultChannels base.Set, err error) 
 	return channels.SetFromArray(channelsArray, channels.ExpandStar)
 }
 
+// Satisfy fmt.Stringer interface for dumping attributes of this subChanges request to logs
 func (s *subChanges) String() string {
 
-	channels, _ := s.channels()
+	buffer := bytes.NewBufferString("")
 
-	return fmt.Sprintf(
-		"Since: %v Continuous: %v ActiveOnly: %v.  Filter: %v.  Channels: %v",
-		s.since(),
-		s.continuous(),
-		s.activeOnly(),
-		s.filter(),
-		channels,
-	)
+	buffer.WriteString(fmt.Sprintf("Since: %v ", s.since()))
+
+	continuous := s.continuous()
+	if continuous {
+		buffer.WriteString(fmt.Sprintf("Continuous: %v ", continuous))
+	}
+
+	activeOnly := s.activeOnly()
+	if activeOnly {
+		buffer.WriteString(fmt.Sprintf("ActiveOnly: %v ", activeOnly))
+	}
+
+	filter := s.filter()
+	if len(filter) > 0 {
+		buffer.WriteString(fmt.Sprintf("Filter: %v ", filter))
+		channels, found := s.channels()
+		if found {
+			buffer.WriteString(fmt.Sprintf("Channels: %v ", channels))
+		}
+	}
+
+	batchSize := s.batchSize()
+	if batchSize != int(BlipDefaultBatchSize) {
+		buffer.WriteString(fmt.Sprintf("BatchSize: %v ", s.batchSize()))
+	}
+
+	return buffer.String()
+
 }
