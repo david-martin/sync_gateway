@@ -548,7 +548,7 @@ func TestCheckpoint(t *testing.T) {
 	assertNoError(t, err, "Unexpected error")
 	log.Printf("responseSetCheckpoint body: %s", body)
 
-	// Get the checkpoint
+	// Get the checkpoint and make sure it has the expected value
 	requestGetCheckpoint2 := blip.NewRequest()
 	requestGetCheckpoint2.SetCompressed(true)
 	requestGetCheckpoint2.SetProfile(BlipProfileGetCheckpoint)

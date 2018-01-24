@@ -12,28 +12,6 @@ import (
 	"github.com/couchbase/sync_gateway/db"
 )
 
-const (
-
-	// Blip properties
-	BlipPropertySince      = "since"
-	BlipPropertyBatch      = "batch"
-	BlipPropertyContinuous = "continuous"
-	BlipPropertyActiveOnly = "active_only"
-	BlipPropertyFilter     = "filter"
-	BlipPropertyChannels   = "channels"
-
-	// Blip profiles
-	BlipProfileSubChanges     = "subChanges"
-	BlipProfileChanges        = "changes"
-	BlipProfileProposeChanges = "proposeChanges"
-	BlipProfileGetCheckpoint  = "getCheckpoint"
-	BlipProfileSetCheckpoint  = "setCheckpoint"
-	BlipProfileRev            = "rev"
-	BlipProfileGetAttachment  = "getAttachment"
-
-	// Blip default vals
-	BlipDefaultBatchSize = uint64(200)
-)
 
 // Function signature for something that generates a sequence id
 type SequenceIDGenerator func() db.SequenceID
@@ -134,6 +112,41 @@ func (s *subChanges) String() string {
 	batchSize := s.batchSize()
 	if batchSize != int(BlipDefaultBatchSize) {
 		buffer.WriteString(fmt.Sprintf("BatchSize: %v ", s.batchSize()))
+	}
+
+	return buffer.String()
+
+}
+
+
+type setCheckpoint struct {
+	rq                    *blip.Message       // The underlying BLIP message for this subChanges request
+}
+
+func newSetCheckpoint(rq *blip.Message) *setCheckpoint {
+	return &setCheckpoint{
+		rq:                    rq,
+	}
+}
+
+func (s *setCheckpoint) client() string {
+	return s.rq.Properties[BlipPropertyClient]
+}
+
+func (s *setCheckpoint) rev() string {
+	return s.rq.Properties[BlipPropertyRev]
+}
+
+func (s *setCheckpoint) String() string {
+
+	buffer := bytes.NewBufferString("")
+
+
+	buffer.WriteString(fmt.Sprintf("Client: %v ", s.client()))
+
+	rev := s.rev()
+	if len(rev) > 0 {
+		buffer.WriteString(fmt.Sprintf("Rev: %v ", rev))
 	}
 
 	return buffer.String()

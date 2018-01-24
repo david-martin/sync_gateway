@@ -21,6 +21,32 @@ import (
 	"github.com/couchbase/sync_gateway/db"
 )
 
+const (
+
+	// Blip properties
+	BlipPropertySince      = "since"
+	BlipPropertyBatch      = "batch"
+	BlipPropertyContinuous = "continuous"
+	BlipPropertyActiveOnly = "active_only"
+	BlipPropertyFilter     = "filter"
+	BlipPropertyChannels   = "channels"
+	BlipPropertyClient     = "client"
+	BlipPropertyRev     = "rev"
+
+
+	// Blip profiles
+	BlipProfileSubChanges     = "subChanges"
+	BlipProfileChanges        = "changes"
+	BlipProfileProposeChanges = "proposeChanges"
+	BlipProfileGetCheckpoint  = "getCheckpoint"
+	BlipProfileSetCheckpoint  = "setCheckpoint"
+	BlipProfileRev            = "rev"
+	BlipProfileGetAttachment  = "getAttachment"
+
+	// Blip default vals
+	BlipDefaultBatchSize = uint64(200)
+)
+
 // Represents one BLIP connection (socket) opened by a client.
 // This connection remains open until the client closes it, and can receive any number of requests.
 type blipSyncContext struct {
@@ -204,25 +230,23 @@ func (bh *blipHandler) handleGetCheckpoint(rq *blip.Message) error {
 // Received a "setCheckpoint" request
 func (bh *blipHandler) handleSetCheckpoint(rq *blip.Message) error {
 
-	client := rq.Properties["client"]
+	setCheckpoint := newSetCheckpoint(rq)
+	bh.logEndpointEntry(rq.Profile(), setCheckpoint)
 
-	// TODO: need to create a setCheckpoint struct which knows how to dump the client and the rev
-	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Client: %s", client)))
-
-	docID := fmt.Sprintf("checkpoint/%s", client)
+	docID := fmt.Sprintf("checkpoint/%s", setCheckpoint.client())
 
 	var checkpoint db.Body
 	if err := rq.ReadJSONBody(&checkpoint); err != nil {
 		return err
 	}
-	if revID := rq.Properties["rev"]; revID != "" {
+	if revID := setCheckpoint.rev(); revID != "" {
 		checkpoint["_rev"] = revID
 	}
 	revID, err := bh.db.PutSpecial("local", docID, checkpoint)
 	if err != nil {
 		return err
 	}
-	rq.Response().Properties["rev"] = revID
+	rq.Response().Properties[BlipPropertyRev] = revID
 	return nil
 }
 
