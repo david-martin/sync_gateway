@@ -121,7 +121,7 @@ func (h *handler) handleBLIPSync() error {
 		blipContext:       blipContext,
 		dbc:               h.db.DatabaseContext,
 		user:              h.user,
-		effectiveUsername: h.currentEffectiveUserName(),
+		effectiveUsername: h.currentEffectiveUserNamePlain(),
 	}
 	blipContext.DefaultHandler = ctx.notFound
 	for profile, handlerFn := range kHandlersByProfile {
@@ -167,15 +167,17 @@ func (ctx *blipSyncContext) register(profile string, handlerFn func(*blipHandler
 
 		ctx.incrementSerialNumber()
 
+		// TODO: if rq.profile == subChanges, different logging.  (still want to log error, omit SyncMsg+)
+
 		if err := handlerFn(&handler, rq); err != nil {
 			status, msg := base.ErrorAsHTTPStatus(err)
 			if response := rq.Response(); response != nil {
 				response.SetError("HTTP", status, msg)
 			}
-			ctx.LogTo("SyncMsg", "#%03d: %q   --> %d %s took %v %s", ctx.getSerialNumber(), profile, status, msg, time.Since(startTime), ctx.effectiveUsername)
+			ctx.LogTo("SyncMsg", "#%03d: %q   --> %d %s time:%v user:%s", ctx.getSerialNumber(), profile, status, msg, time.Since(startTime), ctx.effectiveUsername)
 		} else {
 
-			ctx.LogTo("SyncMsg+", "#%03d: %q   --> OK took %v %s ", ctx.getSerialNumber(), profile, time.Since(startTime), ctx.effectiveUsername)
+			ctx.LogTo("SyncMsg+", "#%03d: %q   --> OK time:%v user:%s ", ctx.getSerialNumber(), profile, time.Since(startTime), ctx.effectiveUsername)
 		}
 	}
 }
@@ -285,7 +287,15 @@ func (bh *blipHandler) handleSubscribeToChanges(rq *blip.Message) error {
 		return base.HTTPErrorf(http.StatusBadRequest, "Unknown filter; try sync_gateway/bychannel")
 	}
 
-	go bh.sendChanges(rq.Sender, since) // TODO: does this ever end?
+	// go bh.sendChanges(rq.Sender, since) // TODO: does this ever end?
+
+	go func() {
+		bh.sendChanges(rq.Sender, since)
+		// TODO: for subchanges, eliminate the handler "response -->" and use the one below
+		// TODO: log exit sendChanges goroutine
+		// 2018-01-25T11:07:32.276-08:00 SyncMsg+: [129c71c425a94ec9] #001: "subChanges"   -->| OK time:198.282µs user:GUEST
+
+	}()
 
 	return nil
 }
@@ -729,7 +739,7 @@ func isCompressible(filename string, meta map[string]interface{}) bool {
 }
 
 func (bh *blipHandler) logEndpointEntry(profile string, endpoint fmt.Stringer) {
-	bh.blipSyncContext.LogTo("SyncMsg", "#%03d: %q %s %s", bh.getSerialNumber(), profile, endpoint, bh.effectiveUsername)
+	bh.blipSyncContext.LogTo("SyncMsg", "#%03d: %q %s user:%s", bh.getSerialNumber(), profile, endpoint, bh.effectiveUsername)
 }
 
 type AdhocStringer struct {

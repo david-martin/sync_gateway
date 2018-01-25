@@ -531,6 +531,22 @@ func (h *handler) currentEffectiveUserName() string {
 	return effectiveName
 }
 
+func (h *handler) currentEffectiveUserNamePlain() string {
+	var effectiveName string
+
+	if h.privs == adminPrivs {
+		effectiveName = "ADMIN"
+	} else if h.user != nil {
+		if h.user.Name() != "" {
+			effectiveName = fmt.Sprintf("%s", h.user.Name())
+		} else {
+			effectiveName = "GUEST"
+		}
+	}
+
+	return effectiveName
+}
+
 //////// RESPONSES:
 
 func (h *handler) setHeader(name string, value string) {

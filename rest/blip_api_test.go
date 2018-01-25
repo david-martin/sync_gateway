@@ -137,7 +137,7 @@ func TestBlipPushRevisionInspectChanges(t *testing.T) {
 // Start subChanges w/ continuous=true, batchsize=20
 // Make several updates
 // Wait until we get the expected updates
-func TestContinousChangesSubscription(t *testing.T) {
+func TestContinuousChangesSubscription(t *testing.T) {
 
 	bt, err := NewBlipTester()
 	assertNoError(t, err, "Error creating BlipTester")
@@ -151,10 +151,7 @@ func TestContinousChangesSubscription(t *testing.T) {
 	var numbatchesReceived int32
 	bt.blipContext.HandlerForProfile[BlipProfileChanges] = func(request *blip.Message) {
 
-		log.Printf("got changes message: %+v", request)
-
 		body, err := request.Body()
-		log.Printf("changes body: %v, err: %v", string(body), err)
 
 		if string(body) != "null" {
 
