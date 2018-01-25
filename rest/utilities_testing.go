@@ -636,8 +636,8 @@ func NewBlipTesterFromSpec(spec BlipTesterSpec) (*BlipTester, error) {
 	bt.blipContext = blip.NewContext()
 	bt.blipContext.Logger = DefaultBlipLogger(bt.blipContext.ID)
 
-	bt.blipContext.LogMessages = base.LogEnabledExcludingLogStar("Sync+")
-	bt.blipContext.LogFrames = base.LogEnabledExcludingLogStar("Sync++")
+	bt.blipContext.LogMessages = base.LogEnabledExcludingLogStar("WS+")
+	bt.blipContext.LogFrames = base.LogEnabledExcludingLogStar("WS++")
 
 	origin := "http://localhost" // TODO: what should be used here?
 
@@ -815,5 +815,5 @@ func EnableBlipSyncLogs() {
 	base.EnableLogKey("Sync+")
 	base.EnableLogKey("SyncMsg")
 	base.EnableLogKey("SyncMsg+")
-
+	base.EnableLogKey("WS")
 }
