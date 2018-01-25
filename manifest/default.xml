@@ -118,7 +118,7 @@
 
   <project name="goutils" path="godeps/src/github.com/couchbase/goutils" remote="couchbase" revision="5823a0cbaaa9008406021dc5daf80125ea30bba6"/>
 
-  <project name="go-blip" path="godeps/src/github.com/couchbase/go-blip" remote="couchbase" revision="b6a9a2148d59c2a2ac1df021fdb8bbe2c6f04eb4"/>
+  <project name="go-blip" path="godeps/src/github.com/couchbase/go-blip" remote="couchbase" revision="6506cd68b43c317e031db735b71ae358af19a71b"/>
 
   <project name="go.uuid" path="godeps/src/github.com/satori/go.uuid" remote="satori" revision="5bf94b69c6b68ee1b541973bb8e1144db23a194b"/>
 
