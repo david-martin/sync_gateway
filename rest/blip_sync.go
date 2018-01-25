@@ -172,10 +172,10 @@ func (ctx *blipSyncContext) register(profile string, handlerFn func(*blipHandler
 			if response := rq.Response(); response != nil {
 				response.SetError("HTTP", status, msg)
 			}
-			ctx.LogTo("SyncMsg", "#%03d: %q   --> %d %s ... %s %v", ctx.getSerialNumber(), profile, status, msg, ctx.effectiveUsername, time.Since(startTime))
+			ctx.LogTo("SyncMsg", "#%03d: %q   --> %d %s took %v %s", ctx.getSerialNumber(), profile, status, msg, time.Since(startTime), ctx.effectiveUsername)
 		} else {
 
-			ctx.LogTo("SyncMsg+", "#%03d: %q   --> OK ... %s %v", ctx.getSerialNumber(), profile, ctx.effectiveUsername, time.Since(startTime))
+			ctx.LogTo("SyncMsg+", "#%03d: %q   --> OK took %v %s ", ctx.getSerialNumber(), profile, time.Since(startTime), ctx.effectiveUsername)
 		}
 	}
 }
