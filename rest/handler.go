@@ -226,7 +226,7 @@ func (h *handler) logRequestLine() {
 	if !base.LogEnabled("HTTP") {
 		return
 	}
-	as := h.currentEffectiveUserName()
+	as := h.currentEffectiveUserNameAsUser()
 	proto := ""
 	if h.rq.ProtoMajor >= 2 {
 		proto = " HTTP/2"
@@ -515,23 +515,8 @@ func (h *handler) getBearerToken() string {
 	return ""
 }
 
+
 func (h *handler) currentEffectiveUserName() string {
-	var effectiveName string
-
-	if h.privs == adminPrivs {
-		effectiveName = " (as ADMIN)"
-	} else if h.user != nil {
-		if h.user.Name() != "" {
-			effectiveName = fmt.Sprintf(" (as %s)", h.user.Name())
-		} else {
-			effectiveName = " (as GUEST)"
-		}
-	}
-
-	return effectiveName
-}
-
-func (h *handler) currentEffectiveUserNamePlain() string {
 	var effectiveName string
 
 	if h.privs == adminPrivs {
@@ -545,6 +530,10 @@ func (h *handler) currentEffectiveUserNamePlain() string {
 	}
 
 	return effectiveName
+}
+
+func (h *handler) currentEffectiveUserNameAsUser() string {
+	return fmt.Sprintf(" (as %s)", h.currentEffectiveUserName())
 }
 
 //////// RESPONSES:

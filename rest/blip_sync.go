@@ -121,7 +121,7 @@ func (h *handler) handleBLIPSync() error {
 		blipContext:       blipContext,
 		dbc:               h.db.DatabaseContext,
 		user:              h.user,
-		effectiveUsername: h.currentEffectiveUserNamePlain(),
+		effectiveUsername: h.currentEffectiveUserName(),
 	}
 	blipContext.DefaultHandler = ctx.notFound
 	for profile, handlerFn := range kHandlersByProfile {
@@ -139,7 +139,7 @@ func (h *handler) handleBLIPSync() error {
 	server := blipContext.WebSocketServer()
 	defaultHandler := server.Handler
 	server.Handler = func(conn *websocket.Conn) {
-		h.logStatus(101, fmt.Sprintf("[%s] Upgraded to BLIP+WebSocket protocol %s.", blipContext.ID, h.currentEffectiveUserName()))
+		h.logStatus(101, fmt.Sprintf("[%s] Upgraded to BLIP+WebSocket protocol.  User:%s.", blipContext.ID, h.currentEffectiveUserName()))
 		defer func() {
 			conn.Close() // in case it wasn't closed already
 			ctx.LogTo("HTTP+", "#%03d:    --> BLIP+WebSocket connection closed", h.serialNumber)
