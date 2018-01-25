@@ -139,7 +139,7 @@ func (h *handler) handleBLIPSync() error {
 	server := blipContext.WebSocketServer()
 	defaultHandler := server.Handler
 	server.Handler = func(conn *websocket.Conn) {
-		h.logStatus(101, fmt.Sprintf("[%s] Upgraded to BLIP+WebSocket protocol.  User:%s.", blipContext.ID, h.currentEffectiveUserName()))
+		h.logStatus(101, fmt.Sprintf("[%s] Upgraded to BLIP+WebSocket protocol. User:%s.", blipContext.ID, h.currentEffectiveUserName()))
 		defer func() {
 			conn.Close() // in case it wasn't closed already
 			ctx.LogTo("HTTP+", "#%03d:    --> BLIP+WebSocket connection closed", h.serialNumber)
@@ -167,17 +167,18 @@ func (ctx *blipSyncContext) register(profile string, handlerFn func(*blipHandler
 
 		ctx.incrementSerialNumber()
 
-		// TODO: if rq.profile == subChanges, different logging.  (still want to log error, omit SyncMsg+)
-
 		if err := handlerFn(&handler, rq); err != nil {
 			status, msg := base.ErrorAsHTTPStatus(err)
 			if response := rq.Response(); response != nil {
 				response.SetError("HTTP", status, msg)
 			}
-			ctx.LogTo("SyncMsg", "#%03d: %q   --> %d %s time:%v user:%s", ctx.getSerialNumber(), profile, status, msg, time.Since(startTime), ctx.effectiveUsername)
+			ctx.LogTo("SyncMsg", "#%03d: Prf:%s   --> %d %s Time:%v User:%s", ctx.getSerialNumber(), profile, status, msg, time.Since(startTime), ctx.effectiveUsername)
 		} else {
 
-			ctx.LogTo("SyncMsg+", "#%03d: %q   --> OK time:%v user:%s ", ctx.getSerialNumber(), profile, time.Since(startTime), ctx.effectiveUsername)
+			// Log the fact that the handler has finished, except for the "subChanges" special case which does it's own termination related logging
+			if profile != BlipProfileSubChanges {
+				ctx.LogTo("SyncMsg+", "#%03d: Prf:%s   --> OK Time:%v User:%s ", ctx.getSerialNumber(), profile, time.Since(startTime), ctx.effectiveUsername)
+			}
 		}
 	}
 }
@@ -215,7 +216,7 @@ func (ctx *blipSyncContext) LogTo(key string, format string, args ...interface{}
 func (bh *blipHandler) handleGetCheckpoint(rq *blip.Message) error {
 
 	client := rq.Properties["client"]
-	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Client: %s", client)))
+	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Client:%s", client)))
 
 	docID := fmt.Sprintf("checkpoint/%s", client)
 	response := rq.Response()
@@ -289,11 +290,15 @@ func (bh *blipHandler) handleSubscribeToChanges(rq *blip.Message) error {
 
 	// go bh.sendChanges(rq.Sender, since) // TODO: does this ever end?
 
+	// Kick off async goroutine to send (possibly continuous) changes to other side
 	go func() {
+
+		startTime := time.Now()
+
+		// Send changes
 		bh.sendChanges(rq.Sender, since)
-		// TODO: for subchanges, eliminate the handler "response -->" and use the one below
-		// TODO: log exit sendChanges goroutine
-		// 2018-01-25T11:07:32.276-08:00 SyncMsg+: [129c71c425a94ec9] #001: "subChanges"   -->| OK time:198.282µs user:GUEST
+
+		bh.LogTo("SyncMsg+", "#%03d: Prf:%s   --> Time:%v User:%s ", bh.getSerialNumber(), rq.Profile(), time.Since(startTime), bh.effectiveUsername)
 
 	}()
 
@@ -435,7 +440,7 @@ func (bh *blipHandler) handlePushedChanges(rq *blip.Message) error {
 		return err
 	}
 
-	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Num Pushed Changes: %d", len(changeList))))
+	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("#Changes:%d", len(changeList))))
 	if len(changeList) == 0 {
 		return nil
 	}
@@ -472,7 +477,7 @@ func (bh *blipHandler) handleProposedChanges(rq *blip.Message) error {
 	if err := rq.ReadJSONBody(&changeList); err != nil {
 		return err
 	}
-	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("Num Proposed Changes: %d", len(changeList))))
+	bh.logEndpointEntry(rq.Profile(), NewAdhocStringer(fmt.Sprintf("#Changes: %d", len(changeList))))
 	if len(changeList) == 0 {
 		return nil
 	}
@@ -739,7 +744,7 @@ func isCompressible(filename string, meta map[string]interface{}) bool {
 }
 
 func (bh *blipHandler) logEndpointEntry(profile string, endpoint fmt.Stringer) {
-	bh.blipSyncContext.LogTo("SyncMsg", "#%03d: %q %s user:%s", bh.getSerialNumber(), profile, endpoint, bh.effectiveUsername)
+	bh.blipSyncContext.LogTo("SyncMsg", "#%03d: Prf:%s %s User:%s", bh.getSerialNumber(), profile, endpoint, bh.effectiveUsername)
 }
 
 type AdhocStringer struct {

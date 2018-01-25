@@ -87,30 +87,30 @@ func (s *subChanges) String() string {
 
 	buffer := bytes.NewBufferString("")
 
-	buffer.WriteString(fmt.Sprintf("Since: %v ", s.since()))
+	buffer.WriteString(fmt.Sprintf("Since:%v ", s.since()))
 
 	continuous := s.continuous()
 	if continuous {
-		buffer.WriteString(fmt.Sprintf("Continuous: %v ", continuous))
+		buffer.WriteString(fmt.Sprintf("Continuous:%v ", continuous))
 	}
 
 	activeOnly := s.activeOnly()
 	if activeOnly {
-		buffer.WriteString(fmt.Sprintf("ActiveOnly: %v ", activeOnly))
+		buffer.WriteString(fmt.Sprintf("ActiveOnly:%v ", activeOnly))
 	}
 
 	filter := s.filter()
 	if len(filter) > 0 {
-		buffer.WriteString(fmt.Sprintf("Filter: %v ", filter))
+		buffer.WriteString(fmt.Sprintf("Filter:%v ", filter))
 		channels, found := s.channels()
 		if found {
-			buffer.WriteString(fmt.Sprintf("Channels: %v ", channels))
+			buffer.WriteString(fmt.Sprintf("Channels:%v ", channels))
 		}
 	}
 
 	batchSize := s.batchSize()
 	if batchSize != int(BlipDefaultBatchSize) {
-		buffer.WriteString(fmt.Sprintf("BatchSize: %v ", s.batchSize()))
+		buffer.WriteString(fmt.Sprintf("BatchSize:%v ", s.batchSize()))
 	}
 
 	return buffer.String()
@@ -139,11 +139,11 @@ func (s *setCheckpoint) String() string {
 
 	buffer := bytes.NewBufferString("")
 
-	buffer.WriteString(fmt.Sprintf("Client: %v ", s.client()))
+	buffer.WriteString(fmt.Sprintf("Client:%v ", s.client()))
 
 	rev := s.rev()
 	if len(rev) > 0 {
-		buffer.WriteString(fmt.Sprintf("Rev: %v ", rev))
+		buffer.WriteString(fmt.Sprintf("Rev:%v ", rev))
 	}
 
 	return buffer.String()
@@ -185,19 +185,19 @@ func (a *addRevision) String() string {
 	buffer := bytes.NewBufferString("")
 
 	if id, foundId := a.id(); foundId {
-		buffer.WriteString(fmt.Sprintf("Id: %v ", id))
+		buffer.WriteString(fmt.Sprintf("Id:%v ", id))
 	}
 
 	if rev, foundRev := a.rev(); foundRev {
-		buffer.WriteString(fmt.Sprintf("Rev: %v ", rev))
+		buffer.WriteString(fmt.Sprintf("Rev:%v ", rev))
 	}
 
 	if deleted, foundDeleted := a.deleted(); foundDeleted {
-		buffer.WriteString(fmt.Sprintf("Deleted: %v ", deleted))
+		buffer.WriteString(fmt.Sprintf("Deleted:%v ", deleted))
 	}
 
 	if sequence, foundSequence := a.sequence(); foundSequence == true {
-		buffer.WriteString(fmt.Sprintf("Sequence: %v ", sequence))
+		buffer.WriteString(fmt.Sprintf("Sequence:%v ", sequence))
 	}
 
 	return buffer.String()
@@ -224,7 +224,7 @@ func (g *getAttachment) String() string {
 
 	buffer := bytes.NewBufferString("")
 
-	buffer.WriteString(fmt.Sprintf("Digest: %v ", g.digest()))
+	buffer.WriteString(fmt.Sprintf("Digest:%v ", g.digest()))
 
 	return buffer.String()
 
