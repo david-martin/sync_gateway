@@ -19,6 +19,8 @@ import (
 	"github.com/couchbase/sync_gateway/base"
 	"github.com/couchbase/sync_gateway/channels"
 	"github.com/couchbase/sync_gateway/db"
+	"time"
+	"sync/atomic"
 )
 
 const (
@@ -63,6 +65,7 @@ type blipSyncContext struct {
 	channels           base.Set
 	lock               sync.Mutex
 	allowedAttachments map[string]int
+	blipSerialNumber   uint64
 }
 
 type blipHandler struct {
@@ -154,7 +157,7 @@ func (ctx *blipSyncContext) register(profile string, handlerFn func(*blipHandler
 
 	ctx.blipContext.HandlerForProfile[profile] = func(rq *blip.Message) {
 
-		ctx.LogTo("Sync", "%s %q ... %s", rq, profile, ctx.effectiveUsername)
+		startTime := time.Now()
 
 		db, _ := db.GetDatabase(ctx.dbc, ctx.user)
 		handler := blipHandler{
@@ -162,14 +165,17 @@ func (ctx *blipSyncContext) register(profile string, handlerFn func(*blipHandler
 			db:              db,
 		}
 
+		ctx.incrementSerialNumber()
+
 		if err := handlerFn(&handler, rq); err != nil {
 			status, msg := base.ErrorAsHTTPStatus(err)
 			if response := rq.Response(); response != nil {
 				response.SetError("HTTP", status, msg)
 			}
-			ctx.LogTo("Sync", "%s %q   --> %d %s ... %s", rq, profile, status, msg, ctx.effectiveUsername)
+			ctx.LogTo("SyncMsg", "#%03d: %q   --> %d %s ... %s %v", ctx.getSerialNumber(), profile, status, msg, ctx.effectiveUsername, time.Since(startTime))
 		} else {
-			ctx.LogTo("Sync+", "%s %q   --> OK ... %s", rq, profile, ctx.effectiveUsername)
+
+			ctx.LogTo("SyncMsg+", "#%03d: %q   --> OK ... %s %v", ctx.getSerialNumber(), profile, ctx.effectiveUsername, time.Since(startTime))
 		}
 	}
 }
@@ -648,6 +654,14 @@ func (bh *blipHandler) downloadOrVerifyAttachments(body db.Body, minRevpos int, 
 		})
 }
 
+func (ctx *blipSyncContext) incrementSerialNumber() {
+	ctx.blipSerialNumber = atomic.AddUint64(&ctx.blipSerialNumber, 1)
+}
+
+func (ctx *blipSyncContext) getSerialNumber() uint64 {
+	return atomic.LoadUint64(&ctx.blipSerialNumber)
+}
+
 func (ctx *blipSyncContext) addAllowedAttachments(atts map[string]interface{}) {
 	ctx.lock.Lock()
 	defer ctx.lock.Unlock()
@@ -715,7 +729,7 @@ func isCompressible(filename string, meta map[string]interface{}) bool {
 }
 
 func (bh *blipHandler) logEndpointEntry(profile string, endpoint fmt.Stringer) {
-	bh.blipSyncContext.LogTo("SyncMsg", "%q %s %s", profile, endpoint, bh.effectiveUsername)
+	bh.blipSyncContext.LogTo("SyncMsg", "#%03d: %q %s %s", bh.getSerialNumber(), profile, endpoint, bh.effectiveUsername)
 }
 
 type AdhocStringer struct {
